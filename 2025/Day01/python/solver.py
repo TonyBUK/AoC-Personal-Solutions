@@ -5,6 +5,8 @@ def main() :
  
     with open("../input.txt", "r") as inputFile:
 
+        OFFSET_AND_DIRECTION = {"R": (0, 1), "L": (-1, -1)}
+
         # Starting States - Dial is 50
         nValue        = 50
         nTimesPartOne = 0
@@ -16,7 +18,7 @@ def main() :
             #
             # Direction is for both parts: +1 for R, -1 for L
             # Offset is only for part 2
-            nOffset, nDirection = (0,1) if kLine[0] == 'R' else (-1,-1)
+            nOffset, nDirection = OFFSET_AND_DIRECTION[kLine[0]]
 
             # Buffer the Previous State for Part 2
             nPrevValue = nValue

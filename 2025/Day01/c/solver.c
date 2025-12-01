@@ -2,42 +2,45 @@
 #include <stdlib.h>
 #include <assert.h>
 
-int64_t getDirection(FILE** pData)
+int getDirectionAndMagnitude(FILE* pData, int64_t* pDirection, int64_t* pMagnitude)
 {
-    while (!feof(*pData))
+    /* Read the Direction */
+    while (1)
     {
-        const char cDirection = fgetc(*pData);
+        const char cDirection = fgetc(pData);
         if (cDirection == 'L')
         {
-            return -1;
+            *pDirection = -1;
+            break;
         }
         else if (cDirection == 'R')
         {
-            return 1;
+            *pDirection = 1;
+            break;
+        }
+        else if (cDirection == EOF)
+        {
+            return 0;
         }
     }
 
-    return 0;
-}
-
-int64_t getMagnitude(FILE** pData)
-{
-    int64_t nMagnitude = 0;
-
-    while (!feof(*pData))
+    /* Read the Magnitude */
+    uint64_t nMagnitude = 0;
+    while (1)
     {
-        const char cDigit = fgetc(*pData);
+        const char cDigit = fgetc(pData);
         if (cDigit >= '0' && cDigit <= '9')
         {
             nMagnitude = (nMagnitude * 10) + (cDigit - '0');
         }
         else
         {
+            *pMagnitude = nMagnitude;
             break;
         }
     }
-
-    return nMagnitude;
+    
+    return 1;
 }
 
 int main(int argc, char** argv)
@@ -52,15 +55,17 @@ int main(int argc, char** argv)
 
         while(1)
         {
-            int64_t nPrevValue = nValue;
-
             /* Offset/Direction Calculations. */
-            const int64_t nDirection = getDirection(&pData);
-            if (feof(pData)) break;
+            int64_t nDirection, nMagnitude;
+            if (!getDirectionAndMagnitude(pData, &nDirection, &nMagnitude))
+            {
+                break;
+            }
+
             const int64_t nOffset    = (nDirection == 1) ? 0 : -1;
+                  int64_t nPrevValue = nValue;
 
-            const int64_t nMagnitude = getMagnitude(&pData);
-
+            /* Move the Dial */
             nValue += (nDirection * nMagnitude);
 
             /* Small C Hack as Python division/floor behaves differently to C for negative

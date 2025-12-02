@@ -4,7 +4,7 @@ import math
  
 def main() :
  
-    with open("example.txt", "r") as inputFile:
+    with open("../input.txt", "r") as inputFile:
 
         kRanges     = [[int(k) for k in kRange.split("-")] for kRange in inputFile.read().strip().split(",")]
         nSumPartOne = 0

@@ -4,7 +4,7 @@
 
 int getRange(FILE* pData, int64_t* pMin, int64_t* pMax, int64_t* pMinLength, int64_t* pMaxLength)
 {
-    /* Read the Magnitude */
+    /* Read the Range */
     int64_t nValue  = 0;
     int64_t nLength = 0;
     int64_t nStage  = 0;
@@ -86,12 +86,13 @@ int main(int argc, char** argv)
 
                 for (nSliceCount = 2; nSliceCount <= nLength; ++nSliceCount)
                 {
-                    int64_t i;
-
-                    if (nLength % nSliceCount != 0)
+                    /* Quick Discard - Slice Count impossible for Length */
+                    if ((nLength % nSliceCount) != 0)
                     {
                         continue;
                     }
+
+                    int64_t i;
 
                     /* Determine the Divisor for this Length/Slice Count */
                     int64_t nDivisor = 10;
@@ -106,7 +107,7 @@ int main(int argc, char** argv)
                     {
                         /* For Min, we want the first group of digits */
                         nFirstSlice = nMin;
-                        for (i = 0; i < (nSliceCount - 1); ++i)
+                        for (i = 1; i < nSliceCount; ++i)
                         {
                             nFirstSlice /= nDivisor;
                         }
@@ -134,11 +135,10 @@ int main(int argc, char** argv)
                         }
 
                         /* Record if within Range */
-                        if (nInvalidID >= nMin && nInvalidID <= nMax)
+                        if ((nInvalidID >= nMin) && (nInvalidID <= nMax))
                         {
                             /* Avoid Duplicates for Part Two */
                             int bFound = 0;
-
                             for (i = 0; i < nSeenCount; ++i)
                             {
                                 if (kSeen[i] == nInvalidID)
@@ -169,11 +169,8 @@ int main(int argc, char** argv)
                             }
                         }
 
-                        /* Increment the first slice */
-                        ++nFirstSlice;
-
-                        /* Stop if we exceed the possible slices */
-                        if (nFirstSlice >= nDivisor)
+                        /* Increment the first slice and stop if we exceed the possible slices */
+                        if (++nFirstSlice >= nDivisor)
                         {
                             break;
                         }
@@ -182,8 +179,8 @@ int main(int argc, char** argv)
             }
         }
 
+        /* Cleanup */
         free(kSeen);
-
         fclose(pData);
 
         printf("Part 1: %lld\n", nSumPartOne);

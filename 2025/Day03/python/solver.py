@@ -6,7 +6,7 @@ def main() :
     def getMaxJolt(kJolts : list[int], nNumBatteries : int) -> int :
 
         nJolt = 0
-        nPos  = -1
+        nPos  = 0
 
         # All this does is search for the highest jolt value in the list
         # being careful to leave enough batteries unsearches to satisfy
@@ -31,8 +31,8 @@ def main() :
         for i in reversed(range(nNumBatteries)) :
 
             nJolt          *= 10
-            nCurrentBattery = max(kJolts[nPos+1:-i if i != 0 else None])
-            nPos            = kJolts.index(nCurrentBattery, nPos+1)
+            nCurrentBattery = max(kJolts[nPos:-i if i != 0 else None])
+            nPos            = kJolts.index(nCurrentBattery, nPos) + 1
             nJolt          += nCurrentBattery
 
         #end

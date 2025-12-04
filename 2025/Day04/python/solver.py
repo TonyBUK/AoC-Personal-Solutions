@@ -61,15 +61,15 @@ def main() :
                 break
             #end
 
+            # Update Part Two
+            nAccessibleRollsPartTwo += len(kAccessibleRollsPartTwo)
+
             # Handle Part One, accessible rolls before we start
             # removing
             if bFirstPass :
                 nAccessibleRollsPartOne = nAccessibleRollsPartTwo
                 bFirstPass = False
             #end
-
-            # Update Part Two
-            nAccessibleRollsPartTwo += len(kAccessibleRollsPartTwo)
 
             # Remove the accessible rolls from the set
             kRolls -= kAccessibleRollsPartTwo

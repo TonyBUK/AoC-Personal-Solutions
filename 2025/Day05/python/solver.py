@@ -12,8 +12,11 @@ def main() :
         # Sort the Ranges, this puts the mins in order, which greatly simplifies the merging process
         kFreshRangesUnmerged.sort()
 
+        # Note: For the following code we can abuse an interesting/annoying property of the range
+        #       class.
+
         # Forcibly add the First Element
-        kFreshRanges = [kFreshRangesUnmerged[0]]
+        kFreshRanges = [range(kFreshRangesUnmerged[0][0], kFreshRangesUnmerged[0][1] + 1)]
 
         for kRange in kFreshRangesUnmerged[1:]:
 
@@ -28,26 +31,38 @@ def main() :
             #       1..8
             #
             # Hence we would compare 4 to (5-1)
-            if kFreshRanges[-1][1] < (kRange[0] - 1):
+            #
+            # Because we're using an abused range however, .stop is already made to be 1 higher
+            # for the "in" operator to work as intended, meaning we effectively naturally
+            # re-express this as comparing (4+1) to 5
+            if kFreshRanges[-1].stop < kRange[0]:
 
-                # It's not an overlap
-                kFreshRanges.append(kRange)
+                # It's not an overlap, create a new range
+                kFreshRanges.append(range(kRange[0], kRange[1] + 1))
 
             else:
 
                 # It's an overlap, merge the ranges
-                kFreshRanges[-1][1] = max(kFreshRanges[-1][1], kRange[1])
+                #
+                # Note: The existing stop will already have been pushed on by 1.
+                kFreshRanges[-1] = range(kFreshRanges[-1].start, max(kFreshRanges[-1].stop, kRange[1] + 1))
 
             #end
 
         #end
 
         # Part One - Count Fresh Ingredients
-        nNumFreshIngredientsPartOne = sum(any(nIngredient in range(kFreshRange[0], kFreshRange[1] + 1) for kFreshRange in kFreshRanges)
+        #
+        # Note: The ranges already incorporate pushing the stop on by 1 so that the limits are
+        #       inclusive.
+        nNumFreshIngredientsPartOne = sum(any(nIngredient in kFreshRange for kFreshRange in kFreshRanges)
                                               for nIngredient in kIngredients)
 
         # Part Two - Count all Possible Fresh Ingredients
-        nTotalFreshIntegredentsPartTwo = sum(kFreshRange[1] - kFreshRange[0] + 1 for kFreshRange in kFreshRanges)
+        #
+        # Note: The ranges already incorporate pushing the stop on by 1 so that the range is
+        #       correct.
+        nTotalFreshIntegredentsPartTwo = sum(kFreshRange.stop - kFreshRange.start for kFreshRange in kFreshRanges)
 
         print(f"Part 1: {nNumFreshIngredientsPartOne}")
         print(f"Part 2: {nTotalFreshIntegredentsPartTwo}")

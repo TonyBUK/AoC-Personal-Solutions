@@ -207,8 +207,19 @@ int main(int argc, char** argv)
 
         for (i = 1; i < nFreshIngredientsUnmergedCount; ++i)
         {
-            /* If the min of the current range exceeds the bounds of the last merged range */
-            if (kFreshIngredients[nFreshIngredientsCount-1].nMax < kFreshIngredientsUnmerged[i].nMin)
+            /* If the min of the current range exceeds the bounds of the last merged range
+             *
+             * Note: We subtract 1 as we want to merge the hypothetical ranges:
+             *       1..4
+             *       5..8
+             *
+             * Into:
+             *       1..8
+             *
+             * Hence we would compare 4 to (5-1)
+             */
+
+            if (kFreshIngredients[nFreshIngredientsCount-1].nMax < (kFreshIngredientsUnmerged[i].nMin - 1))
             {
                 /* It's not an Overlap */
                 kFreshIngredients[nFreshIngredientsCount++] = kFreshIngredientsUnmerged[i];

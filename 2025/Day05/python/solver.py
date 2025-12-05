@@ -19,7 +19,16 @@ def main() :
 
             # If the min of the current range exceeds the bounds
             # of the last merged range
-            if kMerged[-1][1] < kRange[0]:
+            #
+            # Note: We subtract 1 as we want to merge the hypothetical ranges:
+            #       1..4
+            #       5..8
+            #
+            # Into:
+            #       1..8
+            #
+            # Hence we would compare 4 to (5-1)
+            if kMerged[-1][1] < (kRange[0] - 1):
 
                 # It's not an overlap
                 kMerged.append(kRange)

@@ -162,7 +162,7 @@ int main(int argc, char** argv)
         int                         bParsingFreshIngredients        = AOC_TRUE;
 
         int64_t                     nNumFreshIngredientsPartOne     = 0;
-        int64_t                     nTotalFreshIntegredentsPartTwo  = 0;
+        int64_t                     nTotalFreshIntegredentsPartTwo;
 
         size_t                      i;
 
@@ -250,10 +250,17 @@ int main(int argc, char** argv)
             }
         }
 
-        /* Part Two - Count Total Ingredients */
+        /* Part Two - Count Total Ingredients
+         *
+         * Note: Because each ingredient will effectively perform (max - min + 1) for the range
+         *       we can optimise out the (+ 1) since this will just be the iteration count which
+         *       we know in advance.  So by defaulting the start count to the iteration count, we
+         *       can factor out all +1's within the inner loop.
+         */
+        nTotalFreshIntegredentsPartTwo = nFreshIngredientsCount;
         for (i = 0; i < nFreshIngredientsCount; ++i)
         {
-            nTotalFreshIntegredentsPartTwo += kFreshIngredients[i].nMax - kFreshIngredients[i].nMin + 1;
+            nTotalFreshIntegredentsPartTwo += kFreshIngredients[i].nMax - kFreshIngredients[i].nMin;
         }
 
         printf("Part 1: %lld\n", nNumFreshIngredientsPartOne);

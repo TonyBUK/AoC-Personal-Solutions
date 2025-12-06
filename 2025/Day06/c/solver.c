@@ -192,11 +192,11 @@ int main(int argc, char** argv)
          * mandate a gap.
          */
         nMaxOperators      = nMaxLineWidth / 2;
-        kOperators         = (Operators_Type*)malloc(                nMaxOperators * sizeof(Operators_Type));
-        kValuesPartOne     = (int64_t*)       calloc(nMaxLineWidth * nMaxOperators,  sizeof(int64_t));
-        kValuesPartTwo     = (int64_t*)       calloc(nMaxLineWidth * nMaxOperators,  sizeof(int64_t));
-        kValueCountPartOne = (size_t*)        calloc(                nMaxOperators,  sizeof(size_t));
-        kValueCountPartTwo = (size_t*)        calloc(                nMaxOperators,  sizeof(size_t));
+        kOperators         = (Operators_Type*)malloc(                        nMaxOperators * sizeof(Operators_Type));
+        kValuesPartOne     = (int64_t*)       calloc((nInputLineCount - 1) * nMaxOperators,  sizeof(int64_t));
+        kValuesPartTwo     = (int64_t*)       calloc(nMaxLineWidth         * nMaxOperators,  sizeof(int64_t));
+        kValueCountPartOne = (size_t*)        malloc(                        nMaxOperators * sizeof(size_t));
+        kValueCountPartTwo = (size_t*)        malloc(                        nMaxOperators * sizeof(size_t));
 
         /* Parse the Operators */
         for (i = 0; i < nMaxLineWidth; ++i)
@@ -209,6 +209,7 @@ int main(int argc, char** argv)
                 {
                     --kValueCountPartTwo[nOperatorsCount-1];
                 }
+                kValueCountPartTwo[nOperatorsCount] = 0;
                 kOperators[nOperatorsCount++] = (Operators_Type)kOperator;
             }
 #if ALLOW_VARIABLE_LENGTH_LINES
@@ -250,22 +251,31 @@ int main(int argc, char** argv)
                 {
                     ++nExpression;
                     nValuePosPartTwo = 0;
-                    ++kValueCountPartOne[nExpression];
+
+                    if (i == 0)
+                    {
+                        kValueCountPartOne[nExpression] = 1;
+                    }
+                    else
+                    {
+                        ++kValueCountPartOne[nExpression];
+                    }
                 }
 
                 if (kValue != ' ')
                 {
-                    const int64_t nValue = kValue - '0';
-                    kValuesPartOne[TO_GRID(nExpression, nValuePosPartOne, nMaxLineWidth)] *= 10;
-                    kValuesPartOne[TO_GRID(nExpression, nValuePosPartOne, nMaxLineWidth)] += nValue;
-                    kValuesPartTwo[TO_GRID(nExpression, nValuePosPartTwo, nMaxLineWidth)] *= 10;
-                    kValuesPartTwo[TO_GRID(nExpression, nValuePosPartTwo, nMaxLineWidth)] += nValue;
+                    const int64_t nValue        = kValue - '0';
+                    const size_t  nPartOnePos   = TO_GRID(nExpression, nValuePosPartOne, (nInputLineCount - 1));
+                    const size_t  nPartTwoPos   = TO_GRID(nExpression, nValuePosPartTwo,         nMaxLineWidth);
+
+                    kValuesPartOne[nPartOnePos] = (kValuesPartOne[nPartOnePos] * 10) + nValue;
+                    kValuesPartTwo[nPartTwoPos] = (kValuesPartTwo[nPartTwoPos] * 10) + nValue;
                 }
             }
         }
 
-        printf("Part 1: %lld\n", solveCephalopodsMaths(kValuesPartOne, kValueCountPartOne, nMaxLineWidth, kOperators, nOperatorsCount));
-        printf("Part 2: %lld\n", solveCephalopodsMaths(kValuesPartTwo, kValueCountPartTwo, nMaxLineWidth, kOperators, nOperatorsCount));
+        printf("Part 1: %lld\n", solveCephalopodsMaths(kValuesPartOne, kValueCountPartOne, (nInputLineCount - 1), kOperators, nOperatorsCount));
+        printf("Part 2: %lld\n", solveCephalopodsMaths(kValuesPartTwo, kValueCountPartTwo, nMaxLineWidth,         kOperators, nOperatorsCount));
 
         /* Cleanup */
         free(kLines);

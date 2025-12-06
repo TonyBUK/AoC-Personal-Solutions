@@ -7,7 +7,7 @@
 #define AOC_FALSE (0)
 
 #define ALLOW_VARIABLE_LENGTH_LINES (0)
-
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #define TO_GRID(nOperation, nValue, nMaxValues) ((nOperation * (nMaxValues)) + (nValue))
 
 typedef enum Operators_Type
@@ -178,9 +178,10 @@ int main(int argc, char** argv)
         int64_t*                    kValuesPartOne;
         int64_t*                    kValuesPartTwo;
 
-        size_t                      nOperatorsCount     = 0;
+        size_t                      nOperatorsCount       = 0;
         size_t*                     kValueCountPartOne;
         size_t*                     kValueCountPartTwo;
+        size_t                      nMaxValueCountPartTwo = 0;
 
         size_t                      i;
 
@@ -192,11 +193,9 @@ int main(int argc, char** argv)
          * mandate a gap.
          */
         nMaxOperators      = nMaxLineWidth / 2;
-        kOperators         = (Operators_Type*)malloc(                        nMaxOperators * sizeof(Operators_Type));
-        kValuesPartOne     = (int64_t*)       calloc((nInputLineCount - 1) * nMaxOperators,  sizeof(int64_t));
-        kValuesPartTwo     = (int64_t*)       calloc(nMaxLineWidth         * nMaxOperators,  sizeof(int64_t));
-        kValueCountPartOne = (size_t*)        malloc(                        nMaxOperators * sizeof(size_t));
-        kValueCountPartTwo = (size_t*)        malloc(                        nMaxOperators * sizeof(size_t));
+        kOperators         = (Operators_Type*)malloc(nMaxOperators * sizeof(Operators_Type));
+        kValueCountPartOne = (size_t*)        malloc(nMaxOperators * sizeof(size_t));
+        kValueCountPartTwo = (size_t*)        malloc(nMaxOperators * sizeof(size_t));
 
         /* Parse the Operators */
         for (i = 0; i < nMaxLineWidth; ++i)
@@ -223,8 +222,17 @@ int main(int argc, char** argv)
 #endif
 
             /* Use this as a change to calculate Part Two's Parameter Count */
-            ++kValueCountPartTwo[nOperatorsCount-1];
+            if ((++kValueCountPartTwo[nOperatorsCount-1]) > nMaxValueCountPartTwo)
+            {
+                nMaxValueCountPartTwo = kValueCountPartTwo[nOperatorsCount-1];
+            }
         }
+
+        /* Note: The extra effort to constraint the size of these saves a ton of execution time on
+         * the constrained CALLOC's
+         */
+        kValuesPartOne     = (int64_t*)calloc((nInputLineCount - 1) * nOperatorsCount, sizeof(int64_t));
+        kValuesPartTwo     = (int64_t*)calloc(nMaxValueCountPartTwo * nOperatorsCount, sizeof(int64_t));
 
         /* Construct the Values List for Both Parts */
         for (i = 0; i < (nInputLineCount-1); ++i)
@@ -266,7 +274,7 @@ int main(int argc, char** argv)
                 {
                     const int64_t nValue        = kValue - '0';
                     const size_t  nPartOnePos   = TO_GRID(nExpression, nValuePosPartOne, (nInputLineCount - 1));
-                    const size_t  nPartTwoPos   = TO_GRID(nExpression, nValuePosPartTwo,         nMaxLineWidth);
+                    const size_t  nPartTwoPos   = TO_GRID(nExpression, nValuePosPartTwo, nMaxValueCountPartTwo);
 
                     kValuesPartOne[nPartOnePos] = (kValuesPartOne[nPartOnePos] * 10) + nValue;
                     kValuesPartTwo[nPartTwoPos] = (kValuesPartTwo[nPartTwoPos] * 10) + nValue;
@@ -275,7 +283,7 @@ int main(int argc, char** argv)
         }
 
         printf("Part 1: %lld\n", solveCephalopodsMaths(kValuesPartOne, kValueCountPartOne, (nInputLineCount - 1), kOperators, nOperatorsCount));
-        printf("Part 2: %lld\n", solveCephalopodsMaths(kValuesPartTwo, kValueCountPartTwo, nMaxLineWidth,         kOperators, nOperatorsCount));
+        printf("Part 2: %lld\n", solveCephalopodsMaths(kValuesPartTwo, kValueCountPartTwo, nMaxValueCountPartTwo, kOperators, nOperatorsCount));
 
         /* Cleanup */
         free(kLines);

@@ -123,6 +123,10 @@ void readLines(FILE** pFile, char** pkFileBuffer, char*** pkLines, size_t* pnLin
     }
 }
 
+#define connectedRoll(nRow, nCol, kGrid, nGridHeight, nGridWidth) \
+    (nRow < 0 || nCol < 0 || nRow >= nGridHeight || nCol >= nGridWidth) ? AOC_FALSE : ((kGrid[nRow][nCol] == '@') ? AOC_TRUE : AOC_FALSE)
+
+#if 0
 int connectedRoll(const ssize_t nRow, const ssize_t nCol, char** kGrid, const size_t nGridHeight, const size_t nGridWidth)
 {
     if (nRow < 0 || nCol < 0 || nRow >= nGridHeight || nCol >= nGridWidth)
@@ -131,6 +135,7 @@ int connectedRoll(const ssize_t nRow, const ssize_t nCol, char** kGrid, const si
     }
     return (kGrid[nRow][nCol] == '@') ? AOC_TRUE : AOC_FALSE;
 }
+#endif
 
 int main(int argc, char** argv)
 {
@@ -281,14 +286,8 @@ int main(int argc, char** argv)
                         const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
                         const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
 
-                        /* Make sure the Grid Position is Valid */
-                        if ((nDeltaRow < 0) || (nDeltaRow >= nGridHeight) || (nDeltaCol < 0) || (nDeltaCol >= nGridWidth))
-                        {
-                            continue;
-                        }
-
                         /* Add the Roll Position if it's actually a roll, and not one we've added already. */
-                        if (kGrid[nDeltaRow][nDeltaCol] == '@')
+                        if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
                         {
                             const size_t nGridPosition = (nDeltaRow * nGridWidth) + nDeltaCol;
 

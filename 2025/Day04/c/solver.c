@@ -193,10 +193,10 @@ int main(int argc, char** argv)
 
                         for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
                         {
-                            const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
-                            const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
+                            const ssize_t nDeltaRow = DELTAS[nDeltas].nRow;
+                            const ssize_t nDeltaCol = DELTAS[nDeltas].nCol;
 
-                            if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
+                            if (connectedRoll(nRow + nDeltaRow, nCol + nDeltaCol, kGrid, nGridHeight, nGridWidth))
                             {
                                 ++nConnectedRolls;
 
@@ -296,10 +296,10 @@ int main(int argc, char** argv)
 
                 for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
                 {
-                    const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
-                    const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
+                    const ssize_t nDeltaRow = DELTAS[nDeltas].nRow;
+                    const ssize_t nDeltaCol = DELTAS[nDeltas].nCol;
 
-                    if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
+                    if (connectedRoll(nRow + nDeltaRow, nCol + nDeltaCol, kGrid, nGridHeight, nGridWidth))
                     {
                         ++nConnectedRolls;
 

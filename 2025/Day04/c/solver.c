@@ -143,16 +143,23 @@ int main(int argc, char** argv)
  
     if (pData)
     {
+        /* All 8 directions to traverse */
+        const Position_Type DELTAS[] = {
+            {-1, -1}, {-1, 0}, {-1, 1},
+            { 0, -1},          { 0, 1},
+            { 1, -1}, { 1, 0}, { 1, 1}
+        };
+
         char*                       kInputBuffer;
         char**                      kGrid;
         size_t                      nGridHeight;
         size_t                      nGridWidth;
 
         Position_Type*              kRolls;
-        size_t                      nRollCount  = 0;
+        size_t                      nRollCount;
 
         Position_Type*              kConnectedRolls;
-        size_t                      nConnectedRollCount;
+        size_t                      nConnectedRollCount     = 0;
 
         int64_t                     nAccessibleRollsPartOne = 0;
         int64_t                     nAccessibleRollsPartTwo = 0;
@@ -165,35 +172,104 @@ int main(int argc, char** argv)
         /* Extract all rolls into a 1D array */
         kRolls          = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
         kConnectedRolls = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
-        kGridMap        = (uint8_t*)      calloc(nGridHeight * nGridWidth,  sizeof(uint8_t));
+        kGridMap        = (uint8_t*)      malloc(nGridHeight * nGridWidth * sizeof(uint8_t));
 
         {
-            ssize_t row, col;
-            for (row = 0; row < (ssize_t)nGridHeight; ++row)
+            ssize_t nRow, nCol;
+            for (nRow = 0; nRow < (ssize_t)nGridHeight; ++nRow)
             {
-                for (col = 0; col < (ssize_t)nGridWidth; ++col)
+                for (nCol = 0; nCol < (ssize_t)nGridWidth; ++nCol)
                 {
-                    if (kGrid[row][col] == '@')
+                    if (kGrid[nRow][nCol] == '@')
                     {
-                        kRolls[nRollCount].nRow = row;
-                        kRolls[nRollCount].nCol = col;
-                        ++nRollCount;
+                        /* Clear all the Grid Positions for any Rolls, this will
+                         * efficiently allow us to detect duplicates later.
+                         */
+                        const size_t nGridPosition = (nRow * nGridWidth) + nCol;
+                        kGridMap[nGridPosition]    = 0;
+
+                        size_t        nDeltas;
+                        size_t        nConnectedRolls = 0;
+
+                        for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
+                        {
+                            const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
+                            const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
+
+                            if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
+                            {
+                                ++nConnectedRolls;
+
+                                /* Early Termination Case, we don't care once we have 4 connected points */
+                                if (nConnectedRolls == 4)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+
+                        /* If less than 4 connected rolls, it's accessible */
+                        if (nConnectedRolls < 4)
+                        {
+                            kConnectedRolls[nConnectedRollCount  ].nRow = nRow;
+                            kConnectedRolls[nConnectedRollCount++].nCol = nCol;
+                        }
                     }
                 }
             }
         }
 
-        /* All 8 directions to traverse */
-        const Position_Type DELTAS[] = {
-            {-1, -1}, {-1, 0}, {-1, 1},
-            { 0, -1},          { 0, 1},
-            { 1, -1}, { 1, 0}, { 1, 1}
-        };
-        int bFirstPass = AOC_TRUE;
+        /*
+         * Handle Part One, accessible rolls before we start
+         * removing
+         */
+        nAccessibleRollsPartOne = nConnectedRollCount;
 
         while (1)
         {
             size_t nRoll;
+
+            /* Update Part Two */
+            nAccessibleRollsPartTwo += nConnectedRollCount;
+
+            /* Remove the accessible rolls */
+            for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
+            {
+                kGrid[kConnectedRolls[nRoll].nRow][kConnectedRolls[nRoll].nCol] = '.';
+            }
+
+            /* When iterating rolls, we really only need to concern ourselves with rolls that were connected to
+                * a removed roll, as this is the only subset of rolls that *could* be removed the next cycle around.
+                * This constructs that list, but removes any duplicates that may arise.
+                *
+                * This drastically reduces the subsequent number of iterations.
+                */
+            nRollCount = 0;
+            for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
+            {
+                const ssize_t nRow = kConnectedRolls[nRoll].nRow;
+                const ssize_t nCol = kConnectedRolls[nRoll].nCol;
+                size_t        nDeltas;
+
+                for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
+                {
+                    const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
+                    const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
+
+                    /* Add the Roll Position if it's actually a roll, and not one we've added already. */
+                    if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
+                    {
+                        const size_t nGridPosition = (nDeltaRow * nGridWidth) + nDeltaCol;
+
+                        if (kGridMap[nGridPosition] == AOC_FALSE)
+                        {
+                            kRolls[nRollCount  ].nRow = nDeltaRow;
+                            kRolls[nRollCount++].nCol = nDeltaCol;
+                            kGridMap[nGridPosition]   = AOC_TRUE;
+                        }
+                    }
+                }
+            }
 
             /* Find all the rolls that are accessible this pass */
             nConnectedRollCount = 0;
@@ -220,10 +296,10 @@ int main(int argc, char** argv)
 
                 for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
                 {
-                    const ssize_t nDeltaRow = DELTAS[nDeltas].nRow;
-                    const ssize_t nDeltaCol = DELTAS[nDeltas].nCol;
+                    const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
+                    const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
 
-                    if (connectedRoll(nRow + nDeltaRow, nCol + nDeltaCol, kGrid, nGridHeight, nGridWidth))
+                    if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
                     {
                         ++nConnectedRolls;
 
@@ -246,60 +322,6 @@ int main(int argc, char** argv)
             if (nConnectedRollCount == 0)
             {
                 break;
-            }
-            else
-            {
-                /*
-                * Handle Part One, accessible rolls before we start
-                * removing
-                */
-                if (bFirstPass)
-                {
-                    nAccessibleRollsPartOne = nConnectedRollCount;
-                    bFirstPass              = AOC_FALSE;
-                }
-
-                /* Update Part Two */
-                nAccessibleRollsPartTwo += nConnectedRollCount;
-
-                /* Remove the accessible rolls */
-                for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
-                {
-                    kGrid[kConnectedRolls[nRoll].nRow][kConnectedRolls[nRoll].nCol] = '.';
-                }
-
-                /* When iterating rolls, we really only need to concern ourselves with rolls that were connected to
-                 * a removed roll, as this is the only subset of rolls that *could* be removed the next cycle around.
-                 * This constructs that list, but removes any duplicates that may arise.
-                 *
-                 * This drastically reduces the subsequent number of iterations.
-                 */
-                nRollCount = 0;
-                for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
-                {
-                    const ssize_t nRow = kConnectedRolls[nRoll].nRow;
-                    const ssize_t nCol = kConnectedRolls[nRoll].nCol;
-                    size_t        nDeltas;
-
-                    for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
-                    {
-                        const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
-                        const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
-
-                        /* Add the Roll Position if it's actually a roll, and not one we've added already. */
-                        if (connectedRoll(nDeltaRow, nDeltaCol, kGrid, nGridHeight, nGridWidth))
-                        {
-                            const size_t nGridPosition = (nDeltaRow * nGridWidth) + nDeltaCol;
-
-                            if (kGridMap[nGridPosition] == AOC_FALSE)
-                            {
-                                kRolls[nRollCount  ].nRow = nDeltaRow;
-                                kRolls[nRollCount++].nCol = nDeltaCol;
-                                kGridMap[nGridPosition]   = AOC_TRUE;
-                            }
-                        }
-                    }
-                }
             }
         }
 

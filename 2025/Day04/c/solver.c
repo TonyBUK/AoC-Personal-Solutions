@@ -146,14 +146,12 @@ int main(int argc, char** argv)
         Position_Type*              kRolls;
         size_t                      nRollCount  = 0;
 
-        Position_Type*              kNextRolls;
-        size_t                      nNextRollsCount = 0;
-
         Position_Type*              kConnectedRolls;
         size_t                      nConnectedRollCount;
 
         int64_t                     nAccessibleRollsPartOne = 0;
         int64_t                     nAccessibleRollsPartTwo = 0;
+        uint8_t*                    kGridMap;
 
         /* Read the whole file into an easier to process 2D Buffer */
         readLines(&pData, &kInputBuffer, &kGrid, &nGridHeight, NULL, &nGridWidth, 0);
@@ -161,8 +159,8 @@ int main(int argc, char** argv)
 
         /* Extract all rolls into a 1D array */
         kRolls          = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
-        kNextRolls      = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
         kConnectedRolls = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
+        kGridMap        = (uint8_t*)      calloc(nGridHeight * nGridWidth,  sizeof(uint8_t));
 
         {
             ssize_t row, col;
@@ -180,7 +178,14 @@ int main(int argc, char** argv)
             }
         }
 
+        /* All 8 directions to traverse */
+        const Position_Type DELTAS[] = {
+            {-1, -1}, {-1, 0}, {-1, 1},
+            { 0, -1},          { 0, 1},
+            { 1, -1}, { 1, 0}, { 1, 1}
+        };
         int bFirstPass = AOC_TRUE;
+
         while (1)
         {
             size_t nRoll;
@@ -190,15 +195,12 @@ int main(int argc, char** argv)
 
             for (nRoll = 0; nRoll < nRollCount; ++nRoll)
             {
-                /* All 8 directions to traverse */
-                const Position_Type DELTAS[] = {
-                    {-1, -1}, {-1, 0}, {-1, 1},
-                    { 0, -1},          { 0, 1},
-                    { 1, -1}, { 1, 0}, { 1, 1}
-                };
-
                 const ssize_t nRow = kRolls[nRoll].nRow;
                 const ssize_t nCol = kRolls[nRoll].nCol;
+
+                /* Undo the Map for the next Iteration */
+                const size_t  nGridPosition = (nRow * nGridWidth) + nCol;
+                kGridMap[nGridPosition]     = 0;
 
                 /*
                  * Count the number of connected rolls
@@ -219,7 +221,9 @@ int main(int argc, char** argv)
                     if (connectedRoll(nRow + nDeltaRow, nCol + nDeltaCol, kGrid, nGridHeight, nGridWidth))
                     {
                         ++nConnectedRolls;
-                        if (nConnectedRolls >= 4)
+
+                        /* Early Termination Case, we don't care once we have 4 connected points */
+                        if (nConnectedRolls == 4)
                         {
                             break;
                         }
@@ -229,12 +233,7 @@ int main(int argc, char** argv)
                 /* If less than 4 connected rolls, it's accessible */
                 if (nConnectedRolls < 4)
                 {
-                    kConnectedRolls[nConnectedRollCount] = kRolls[nRoll];
-                    ++nConnectedRollCount;
-                }
-                else
-                {
-                    kNextRolls[nNextRollsCount++] = kRolls[nRoll];
+                    kConnectedRolls[nConnectedRollCount++] = kRolls[nRoll];
                 }
             }
 
@@ -245,14 +244,6 @@ int main(int argc, char** argv)
             }
             else
             {
-                /* Swap the Rolls */
-                Position_Type* p = kRolls;
-                kRolls           = kNextRolls;
-                kNextRolls       = p;
-
-                nRollCount       = nNextRollsCount;
-                nNextRollsCount  = 0;
-
                 /*
                 * Handle Part One, accessible rolls before we start
                 * removing
@@ -271,6 +262,45 @@ int main(int argc, char** argv)
                 {
                     kGrid[kConnectedRolls[nRoll].nRow][kConnectedRolls[nRoll].nCol] = '.';
                 }
+
+                /* When iterating rolls, we really only need to concern ourselves with rolls that were connected to
+                 * a removed roll, as this is the only subset of rolls that *could* be removed the next cycle around.
+                 * This constructs that list, but removes any duplicates that may arise.
+                 *
+                 * This drastically reduces the subsequent number of iterations.
+                 */
+                nRollCount = 0;
+                for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
+                {
+                    const ssize_t nRow = kConnectedRolls[nRoll].nRow;
+                    const ssize_t nCol = kConnectedRolls[nRoll].nCol;
+                    size_t        nDeltas;
+
+                    for (nDeltas = 0; nDeltas < (sizeof(DELTAS)/sizeof(DELTAS[0])); ++nDeltas)
+                    {
+                        const ssize_t nDeltaRow = nRow + DELTAS[nDeltas].nRow;
+                        const ssize_t nDeltaCol = nCol + DELTAS[nDeltas].nCol;
+
+                        /* Make sure the Grid Position is Valid */
+                        if ((nDeltaRow < 0) || (nDeltaRow >= nGridHeight) || (nDeltaCol < 0) || (nDeltaCol >= nGridWidth))
+                        {
+                            continue;
+                        }
+
+                        /* Add the Roll Position if it's actually a roll, and not one we've added already. */
+                        if (kGrid[nDeltaRow][nDeltaCol] == '@')
+                        {
+                            const size_t nGridPosition = (nDeltaRow * nGridWidth) + nDeltaCol;
+
+                            if (kGridMap[nGridPosition] == AOC_FALSE)
+                            {
+                                kRolls[nRollCount  ].nRow = nDeltaRow;
+                                kRolls[nRollCount++].nCol = nDeltaCol;
+                                kGridMap[nGridPosition]   = AOC_TRUE;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -281,7 +311,6 @@ int main(int argc, char** argv)
         free(kGrid);
         free(kInputBuffer);
         free(kRolls);
-        free(kNextRolls);
         free(kConnectedRolls);
     }
  

@@ -12,12 +12,6 @@ typedef struct Position_Type
     ssize_t nCol;
 } Position_Type;
 
-typedef struct Roll_Type
-{
-    int           bRemoved;
-    Position_Type kPosition;
-} Roll_Type;
-
 /* Boilerplate code to read an entire file into a 1D buffer and give 2D entries per line.
  * This uses the EOL \n to act as a delimiter for each line.
  *
@@ -149,10 +143,13 @@ int main(int argc, char** argv)
         size_t                      nGridHeight;
         size_t                      nGridWidth;
 
-        Roll_Type*                  kRolls;
+        Position_Type*              kRolls;
         size_t                      nRollCount  = 0;
 
-        Roll_Type**                 kConnectedRolls;
+        Position_Type*              kNextRolls;
+        size_t                      nNextRollsCount = 0;
+
+        Position_Type*              kConnectedRolls;
         size_t                      nConnectedRollCount;
 
         int64_t                     nAccessibleRollsPartOne = 0;
@@ -163,8 +160,9 @@ int main(int argc, char** argv)
         fclose(pData);
 
         /* Extract all rolls into a 1D array */
-        kRolls          = (Roll_Type*) malloc(nGridHeight * nGridWidth * sizeof(Roll_Type));
-        kConnectedRolls = (Roll_Type**)malloc(nGridHeight * nGridWidth * sizeof(Roll_Type*));
+        kRolls          = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
+        kNextRolls      = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
+        kConnectedRolls = (Position_Type*)malloc(nGridHeight * nGridWidth * sizeof(Position_Type));
 
         {
             ssize_t row, col;
@@ -174,9 +172,8 @@ int main(int argc, char** argv)
                 {
                     if (kGrid[row][col] == '@')
                     {
-                        kRolls[nRollCount].bRemoved       = AOC_FALSE;
-                        kRolls[nRollCount].kPosition.nRow = row;
-                        kRolls[nRollCount].kPosition.nCol = col;
+                        kRolls[nRollCount].nRow = row;
+                        kRolls[nRollCount].nCol = col;
                         ++nRollCount;
                     }
                 }
@@ -193,11 +190,6 @@ int main(int argc, char** argv)
 
             for (nRoll = 0; nRoll < nRollCount; ++nRoll)
             {
-                if (kRolls[nRoll].bRemoved)
-                {
-                    continue;
-                }
-
                 /* All 8 directions to traverse */
                 const Position_Type DELTAS[] = {
                     {-1, -1}, {-1, 0}, {-1, 1},
@@ -205,8 +197,8 @@ int main(int argc, char** argv)
                     { 1, -1}, { 1, 0}, { 1, 1}
                 };
 
-                const ssize_t nRow = kRolls[nRoll].kPosition.nRow;
-                const ssize_t nCol = kRolls[nRoll].kPosition.nCol;
+                const ssize_t nRow = kRolls[nRoll].nRow;
+                const ssize_t nCol = kRolls[nRoll].nCol;
 
                 /*
                  * Count the number of connected rolls
@@ -237,8 +229,12 @@ int main(int argc, char** argv)
                 /* If less than 4 connected rolls, it's accessible */
                 if (nConnectedRolls < 4)
                 {
-                    kConnectedRolls[nConnectedRollCount] = &kRolls[nRoll];
+                    kConnectedRolls[nConnectedRollCount] = kRolls[nRoll];
                     ++nConnectedRollCount;
+                }
+                else
+                {
+                    kNextRolls[nNextRollsCount++] = kRolls[nRoll];
                 }
             }
 
@@ -247,26 +243,34 @@ int main(int argc, char** argv)
             {
                 break;
             }
-
-            /*
-             * Handle Part One, accessible rolls before we start
-             * removing
-             */
-            if (bFirstPass)
+            else
             {
-                nAccessibleRollsPartOne = nConnectedRollCount;
-                bFirstPass = AOC_FALSE;
-            }
+                /* Swap the Rolls */
+                Position_Type* p = kRolls;
+                kRolls           = kNextRolls;
+                kNextRolls       = p;
 
-            /* Update Part Two */
-            nAccessibleRollsPartTwo += nConnectedRollCount;
+                nRollCount       = nNextRollsCount;
+                nNextRollsCount  = 0;
 
-            /* Remove the accessible rolls */
-            for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
-            {
-                Roll_Type* pRoll = kConnectedRolls[nRoll];
-                pRoll->bRemoved = AOC_TRUE;
-                kGrid[pRoll->kPosition.nRow][pRoll->kPosition.nCol] = '.';
+                /*
+                * Handle Part One, accessible rolls before we start
+                * removing
+                */
+                if (bFirstPass)
+                {
+                    nAccessibleRollsPartOne = nConnectedRollCount;
+                    bFirstPass              = AOC_FALSE;
+                }
+
+                /* Update Part Two */
+                nAccessibleRollsPartTwo += nConnectedRollCount;
+
+                /* Remove the accessible rolls */
+                for (nRoll = 0; nRoll < nConnectedRollCount; ++nRoll)
+                {
+                    kGrid[kConnectedRolls[nRoll].nRow][kConnectedRolls[nRoll].nCol] = '.';
+                }
             }
         }
 
@@ -277,6 +281,7 @@ int main(int argc, char** argv)
         free(kGrid);
         free(kInputBuffer);
         free(kRolls);
+        free(kNextRolls);
         free(kConnectedRolls);
     }
  

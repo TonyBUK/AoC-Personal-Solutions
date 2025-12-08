@@ -212,9 +212,10 @@ int main(int argc, char** argv)
         /* Calculate all the possible distances between the Junction Boxes and sort */
         for (i = 0; i < nJunctionBoxCount; ++i)
         {
-            char* p;
-            kJunctionBoxes[i].X = strtoll(kInputLines[i], NULL, 10);
-            p = strstr(kInputLines[i], ",") + 1;
+            size_t j;
+            char* p = kInputLines[i];
+            kJunctionBoxes[i].X = strtoll(p, NULL, 10);
+            p = strstr(p, ",") + 1;
             kJunctionBoxes[i].Y = strtoll(p, NULL, 10);
             p = strstr(p, ",") + 1;
             kJunctionBoxes[i].Z = strtoll(p, NULL, 10);
@@ -222,17 +223,13 @@ int main(int argc, char** argv)
             /* Initialise the Circuit Map to a Deterministic Value */
             kCircuitMap[i] = INVALID_MAP;
 
-            if (i > 0)
+            for (j = 0; j < i; ++j)
             {
-                size_t j;
-                for (j = 0; j < i; ++j)
-                {
-                    kDistances[nDistanceCount  ].nDistance          = SQUARE(kJunctionBoxes[i].X - kJunctionBoxes[j].X) +
-                                                                      SQUARE(kJunctionBoxes[i].Y - kJunctionBoxes[j].Y) +
-                                                                      SQUARE(kJunctionBoxes[i].Z - kJunctionBoxes[j].Z);
-                    kDistances[nDistanceCount  ].nJunctionBox1Index = i;
-                    kDistances[nDistanceCount++].nJunctionBox2Index = j;
-                }
+                kDistances[nDistanceCount  ].nDistance          = SQUARE(kJunctionBoxes[i].X - kJunctionBoxes[j].X) +
+                                                                  SQUARE(kJunctionBoxes[i].Y - kJunctionBoxes[j].Y) +
+                                                                  SQUARE(kJunctionBoxes[i].Z - kJunctionBoxes[j].Z);
+                kDistances[nDistanceCount  ].nJunctionBox1Index = i;
+                kDistances[nDistanceCount++].nJunctionBox2Index = j;
             }
         }
 

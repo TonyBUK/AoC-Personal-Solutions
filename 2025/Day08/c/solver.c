@@ -21,8 +21,8 @@ typedef struct Junction_Box_Type
 typedef struct Distance_Type
 {
     int64_t           nDistance;
-    size_t            nJunctionBox1Index;
-    size_t            nJunctionBox2Index;
+    uint16_t          nJunctionBox1Index;
+    uint16_t          nJunctionBox2Index;
 } Distance_Type;
 
 /* Boilerplate code to read an entire file into a 1D buffer and give 2D entries per line.
@@ -159,7 +159,7 @@ int main(int argc, char** argv)
  
     if (pData)
     {
-        const size_t                INVALID_MAP                = (size_t)-1;
+        const uint16_t              INVALID_MAP                = (uint16_t)-1;
 
         char*                       kInputBuffer;
         char**                      kInputLines;
@@ -173,24 +173,24 @@ int main(int argc, char** argv)
         size_t                      nDistanceCount             = 0;
 
         /* 2D Array of all circuits and the junction boxes within */
-        size_t*                     kCircuits;
-        size_t*                     kCircuitSizes;
+        uint16_t*                   kCircuits;
+        uint16_t*                   kCircuitSizes;
 
         /* Note: As we lack true array insertion/popping, this is used to skip gaps that will inevitably
          *       be created as we merge circuits.
          */
-        size_t                      nCircuitHighWaterMark      = 0;
+        uint16_t                    nCircuitHighWaterMark      = 0;
 
         /* Map for each Junction Box to the Circuit */
-        size_t*                     kCircuitMap;
+        uint16_t*                   kCircuitMap;
 
         /* Buffer indicating whether a Junction is in a Circuit or Not */
         uint8_t*                    kJunctionBoxInCircuit;
         size_t                      nJunctionBoxInCircuitCount = 0;
 
-        size_t                      nNumCircuits               = 0;
+        uint16_t                    nNumCircuits               = 0;
 
-        size_t                      i;
+        uint16_t                    i;
 
         /* Read the whole file into an easier to process 2D Buffer */
         readLines(&pData, &kInputBuffer, &kInputLines, &nJunctionBoxCount, NULL, NULL, 0);
@@ -204,15 +204,15 @@ int main(int argc, char** argv)
 
         kJunctionBoxes        = (Junction_Box_Type*)malloc(nJunctionBoxCount *                     sizeof(Junction_Box_Type));
         kDistances            = (Distance_Type*)    malloc(nDistanceMaxCount *                     sizeof(Distance_Type));        
-        kCircuits             = (size_t*)           malloc(nJunctionBoxCount * nJunctionBoxCount * sizeof(size_t));
-        kCircuitSizes         = (size_t*)           malloc(nJunctionBoxCount                     * sizeof(size_t));
-        kCircuitMap           = (size_t*)           malloc(nJunctionBoxCount                     * sizeof(size_t));
+        kCircuits             = (uint16_t*)         malloc(nJunctionBoxCount * nJunctionBoxCount * sizeof(uint16_t) / 2);
+        kCircuitSizes         = (uint16_t*)         malloc(nJunctionBoxCount                     * sizeof(uint16_t) / 2);
+        kCircuitMap           = (uint16_t*)         malloc(nJunctionBoxCount                     * sizeof(uint16_t));
         kJunctionBoxInCircuit = (uint8_t*)          calloc(nJunctionBoxCount,                      sizeof(uint8_t));
 
         /* Calculate all the possible distances between the Junction Boxes and sort */
         for (i = 0; i < nJunctionBoxCount; ++i)
         {
-            size_t j;
+            uint16_t j;
             char* p = kInputLines[i];
             kJunctionBoxes[i].X = strtoll(p, NULL, 10);
             p = strstr(p, ",") + 1;
@@ -242,13 +242,13 @@ int main(int argc, char** argv)
          * 2. We're now operating with a single circuit
          */
 
-        for (i =  0; i < nDistanceCount; ++i)
+        for (i = 0; i < nDistanceCount; ++i)
         {
             /* Extract the circuits the Junction Boxes belong to */
-            const size_t nJunctionBox1Index = kDistances[i].nJunctionBox1Index;
-            const size_t nJunctionBox2Index = kDistances[i].nJunctionBox2Index;
-            const size_t nCircuit1          = kCircuitMap[nJunctionBox1Index];
-            const size_t nCircuit2          = kCircuitMap[nJunctionBox2Index];
+            const uint16_t nJunctionBox1Index = kDistances[i].nJunctionBox1Index;
+            const uint16_t nJunctionBox2Index = kDistances[i].nJunctionBox2Index;
+            const uint16_t nCircuit1          = kCircuitMap[nJunctionBox1Index];
+            const uint16_t nCircuit2          = kCircuitMap[nJunctionBox2Index];
 
             /* Remove the Junction Boxes from the list Junction Boxes yet to be processed */
             if (AOC_FALSE == kJunctionBoxInCircuit[nJunctionBox1Index])
@@ -293,18 +293,18 @@ int main(int argc, char** argv)
                     /* Check if we're merging Circuits */
                     if (nCircuit1 != nCircuit2)
                     {
-                        const size_t nCircuit1Size  = kCircuitSizes[nCircuit1];
-                        const size_t nCircuit2Size  = kCircuitSizes[nCircuit2];
-                        const size_t nCircuit1Index = TO_CIRCUIT_ARRAY(nCircuit1, nJunctionBoxCount, nCircuit1Size);
-                        const size_t nCircuit2Index = TO_CIRCUIT_ARRAY(nCircuit2, nJunctionBoxCount, 0);
+                        const uint16_t nCircuit1Size  = kCircuitSizes[nCircuit1];
+                        const uint16_t nCircuit2Size  = kCircuitSizes[nCircuit2];
+                        const size_t   nCircuit1Index = TO_CIRCUIT_ARRAY(nCircuit1, nJunctionBoxCount, nCircuit1Size);
+                        const size_t   nCircuit2Index = TO_CIRCUIT_ARRAY(nCircuit2, nJunctionBoxCount, 0);
                         
-                        size_t j;
+                        uint16_t j;
 
                         /* Merge the Circuit */
                         kCircuitSizes[nCircuit1] += nCircuit2Size;
                         for (j = 0; j < nCircuit2Size; ++j)
                         {
-                            const size_t nJunctionIndex   = kCircuits[nCircuit2Index + j];
+                            const uint16_t nJunctionIndex = kCircuits[nCircuit2Index + j];
 
                             /* Sanity Check */
                             assert(kCircuitMap[nJunctionIndex] == nCircuit2);
@@ -330,8 +330,8 @@ int main(int argc, char** argv)
                     /* Append to Circuit 2 if Junction Box 1 doesn't below to a Circuit */
                     if (INVALID_MAP == nCircuit1)
                     {
-                        const size_t nCircuit2Size       = kCircuitSizes[nCircuit2];
-                        const size_t nCircuit2Index      = TO_CIRCUIT_ARRAY(nCircuit2, nJunctionBoxCount, nCircuit2Size);
+                        const uint16_t nCircuit2Size     = kCircuitSizes[nCircuit2];
+                        const size_t   nCircuit2Index    = TO_CIRCUIT_ARRAY(nCircuit2, nJunctionBoxCount, nCircuit2Size);
 
                         kCircuits[nCircuit2Index]        = nJunctionBox1Index;
                         kCircuitMap[nJunctionBox1Index]  = nCircuit2;
@@ -341,8 +341,8 @@ int main(int argc, char** argv)
                     /* Append to Circuit 1 if Junction Box 2 doesn't below to a Circuit */
                     if (INVALID_MAP == nCircuit2)
                     {
-                        const size_t nCircuit1Size       = kCircuitSizes[nCircuit1];
-                        const size_t nCircuit1Index      = TO_CIRCUIT_ARRAY(nCircuit1, nJunctionBoxCount, nCircuit1Size);
+                        const uint16_t nCircuit1Size     = kCircuitSizes[nCircuit1];
+                        const size_t   nCircuit1Index    = TO_CIRCUIT_ARRAY(nCircuit1, nJunctionBoxCount, nCircuit1Size);
 
                         kCircuits[nCircuit1Index]        = nJunctionBox2Index;
                         kCircuitMap[nJunctionBox2Index]  = nCircuit1;
@@ -357,11 +357,11 @@ int main(int argc, char** argv)
                 int64_t a = 0;
                 int64_t b = 0;
                 int64_t c = 0;
-                size_t j;
+                uint16_t j;
 
                 for (j = 0; j < nCircuitHighWaterMark; ++j)
                 {
-                    const size_t nCircuitSize = kCircuitSizes[j];
+                    const uint16_t nCircuitSize = kCircuitSizes[j];
                     
                     if (nCircuitSize > a)
                     {

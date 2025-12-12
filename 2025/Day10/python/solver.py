@@ -146,19 +146,16 @@ def main() :
         kJoltages           = [[int(c) for c in k.split(" ")[-1].strip()[1:-1].split(",")] for k in kRaw]
 
         # Button Influence on Joltage
-        kButtonsJoltageImpact = []
-        for kButtonGroups, kJoltage in zip(kButtons, kJoltages) :
-
-            kButtonGroupsJoltageImpact = []
-            for kButtonGroup in kButtonGroups :
-                kButtonGroupJoltageImpact = [0 for _ in range(len(kJoltage))]
-                for nButton in kButtonGroup :
-                    kButtonGroupJoltageImpact[nButton] += 1
-                #end
-                kButtonGroupsJoltageImpact.append(kButtonGroupJoltageImpact)
-            #end
-            kButtonsJoltageImpact.append(kButtonGroupsJoltageImpact)
-        #end
+        kButtonsJoltageImpact = [
+            [
+                [
+                    sum(nButton == i for nButton in kButtonGroup)
+                    for i in range(len(kJoltage))
+                ]
+                for kButtonGroup in kButtonGroups
+            ]
+            for kButtonGroups, kJoltage in zip(kButtons, kJoltages)
+        ]
 
         print(f"Part 2: {sum(findFewestPressesPartTwo(tuple(kJoltage), getButtonPermutationsAndCost(kButtonGroupsJoltageImpact), {}) for kJoltage,kButtonGroupsJoltageImpact in zip(kJoltages, kButtonsJoltageImpact))}")
 

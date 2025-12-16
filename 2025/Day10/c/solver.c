@@ -345,8 +345,9 @@ int reachedGoal(const uint16_t* kTargetJoltage, const size_t nJoltageCount)
 /* Adapted from here: https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/ */
 uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t* kButtonCombinations, const size_t* kButtonCombinationCosts, const size_t nMaxButonCombinations, const size_t nJoltageCount, uint16_t* kJoltageTemp, Hash_Map_Type* kCache, uint8_t* kCacheBuffer, size_t* pCacheBufferPtr, const size_t nMaxCacheSize)
 {
-    size_t*        pHashKeySize = (size_t*)  &kCacheBuffer[*pCacheBufferPtr];
-    uint16_t*      kHashKey     = (uint16_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t)];
+    size_t         nCacheKeyPtr = *pCacheBufferPtr;
+    size_t*        pHashKeySize = (size_t*)  &kCacheBuffer[nCacheKeyPtr];
+    uint16_t*      kHashKey     = (uint16_t*)&kCacheBuffer[nCacheKeyPtr + sizeof(size_t)];
     uint64_t*      pHashKeyValue;
 
     /* Choose some very large value that won't overflow */
@@ -359,7 +360,7 @@ uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t
     *pHashKeySize = nJoltageCount;
     memcpy(kHashKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
 
-    pExistingLocalMin = hashmap_get(kCache, &kCacheBuffer[*pCacheBufferPtr]);
+    pExistingLocalMin = hashmap_get(kCache, &kCacheBuffer[nCacheKeyPtr]);
 
     if (pExistingLocalMin)
     {
@@ -422,16 +423,17 @@ uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t
         }
     }
 
-    pHashKeySize  = (size_t*)  &kCacheBuffer[*pCacheBufferPtr];
-    kHashKey      = (uint16_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t)];
-    pHashKeyValue = (uint64_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t) + (nJoltageCount * sizeof(uint16_t))];
+    nCacheKeyPtr   = *pCacheBufferPtr;
+    pHashKeySize   = (size_t*)  &kCacheBuffer[nCacheKeyPtr];
+    kHashKey       = (uint16_t*)&kCacheBuffer[nCacheKeyPtr + sizeof(size_t)];
+    pHashKeyValue  = (uint64_t*)&kCacheBuffer[nCacheKeyPtr + sizeof(size_t) + (nJoltageCount * sizeof(uint16_t))];
 
-    *pHashKeySize = nJoltageCount;
-    memcpy(kHashKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
+    *pHashKeySize  = nJoltageCount;
     *pHashKeyValue = nLocalMin;
-    hashmap_put(kCache, &kCacheBuffer[*pCacheBufferPtr], pHashKeyValue);
+    memcpy(kHashKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
+    hashmap_put(kCache, &kCacheBuffer[nCacheKeyPtr], pHashKeyValue);
 
-    *pCacheBufferPtr += (uint8_t*)pHashKeyValue - (uint8_t*)pHashKeySize + sizeof(uint64_t);
+    *pCacheBufferPtr = nCacheKeyPtr + (uint8_t*)pHashKeyValue - (uint8_t*)pHashKeySize + sizeof(uint64_t);
 
     assert(*pCacheBufferPtr < nMaxCacheSize);
 
@@ -469,7 +471,7 @@ size_t hashKey(const uint8_t* pData)
 {
     size_t* pSize  = (size_t*)pData;
 
-    return hashmap_hash_default(pData, sizeof(size_t) + (*pSize * sizeof(uint16_t)));
+    return hashmap_hash_default(&pData[sizeof(size_t)], *pSize * sizeof(uint16_t));
 }
 
 int main(int argc, char** argv)

@@ -15,13 +15,7 @@ typedef unsigned bool;
 #define AOC_TRUE  (1)
 #define AOC_FALSE (0)
 
-typedef struct Hash_Key_Type
-{
-    size_t    nSize;
-    uint16_t  kKey[32];
-} Hash_Key_Type;
-
-typedef HASHMAP(Hash_Key_Type, uint64_t) Hash_Map_Type;
+typedef HASHMAP(uint8_t, uint64_t) Hash_Map_Type;
 
 typedef struct Button_Type
 {
@@ -349,10 +343,11 @@ int reachedGoal(const uint16_t* kTargetJoltage, const size_t nJoltageCount)
 }
 
 /* Adapted from here: https://www.reddit.com/r/adventofcode/comments/1pk87hl/2025_day_10_part_2_bifurcate_your_way_to_victory/ */
-uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t* kButtonCombinations, const size_t* kButtonCombinationCosts, const size_t nMaxButonCombinations, const size_t nJoltageCount, uint16_t* kJoltageTemp, Hash_Map_Type* kCache)
+uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t* kButtonCombinations, const size_t* kButtonCombinationCosts, const size_t nMaxButonCombinations, const size_t nJoltageCount, uint16_t* kJoltageTemp, Hash_Map_Type* kCache, uint8_t* kCacheBuffer, size_t* pCacheBufferPtr, const size_t nMaxCacheSize)
 {
-    Hash_Key_Type  kHashKey;
-    Hash_Key_Type* pHashKey;
+    size_t*        pHashKeySize = (size_t*)  &kCacheBuffer[*pCacheBufferPtr];
+    uint16_t*      kHashKey     = (uint16_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t)];
+    uint64_t*      pHashKeyValue;
 
     /* Choose some very large value that won't overflow */
     uint64_t  nLocalMin = (uint32_t)-1;
@@ -361,10 +356,10 @@ uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t
     size_t    i;
 
     /* Have we seen this before? */
-    kHashKey.nSize = nJoltageCount;
-    memcpy(kHashKey.kKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
+    *pHashKeySize = nJoltageCount;
+    memcpy(kHashKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
 
-    pExistingLocalMin = hashmap_get(kCache, &kHashKey);
+    pExistingLocalMin = hashmap_get(kCache, &kCacheBuffer[*pCacheBufferPtr]);
 
     if (pExistingLocalMin)
     {
@@ -418,7 +413,7 @@ uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t
 
         if (bValid)
         {
-            const uint64_t nNewLocalMin = nButtonCost + 2 * findFewestPressesPartTwo(kJoltageTemp, kButtonCombinations, kButtonCombinationCosts, nMaxButonCombinations, nJoltageCount, &kJoltageTemp[nJoltageCount], kCache);
+            const uint64_t nNewLocalMin = nButtonCost + 2 * findFewestPressesPartTwo(kJoltageTemp, kButtonCombinations, kButtonCombinationCosts, nMaxButonCombinations, nJoltageCount, &kJoltageTemp[nJoltageCount], kCache, kCacheBuffer, pCacheBufferPtr, nMaxCacheSize);
 
             if (nNewLocalMin < nLocalMin)
             {
@@ -427,28 +422,41 @@ uint64_t findFewestPressesPartTwo(const uint16_t* kTargetJoltage, const uint16_t
         }
     }
 
-    pHashKey  = (Hash_Key_Type*)malloc(sizeof(Hash_Key_Type));
-    pLocalMin = (uint64_t*)malloc(sizeof(uint64_t));
-    *pHashKey = kHashKey;
-    *pLocalMin = nLocalMin;
-    hashmap_put(kCache, pHashKey, pLocalMin);
+    pHashKeySize  = (size_t*)  &kCacheBuffer[*pCacheBufferPtr];
+    kHashKey      = (uint16_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t)];
+    pHashKeyValue = (uint64_t*)&kCacheBuffer[*pCacheBufferPtr + sizeof(size_t) + (nJoltageCount * sizeof(uint16_t))];
+
+    *pHashKeySize = nJoltageCount;
+    memcpy(kHashKey, kTargetJoltage, nJoltageCount * sizeof(uint16_t));
+    *pHashKeyValue = nLocalMin;
+    hashmap_put(kCache, &kCacheBuffer[*pCacheBufferPtr], pHashKeyValue);
+
+    *pCacheBufferPtr += (uint8_t*)pHashKeyValue - (uint8_t*)pHashKeySize + sizeof(uint64_t);
+
+    assert(*pCacheBufferPtr < nMaxCacheSize);
 
     return nLocalMin;
 }
 
-int compareHashKeyType(const Hash_Key_Type* pLeft, const Hash_Key_Type* pRight)
+int compareHashKeyType(const uint8_t* pLeftRaw, const uint8_t* pRightRaw)
 {
-    size_t i;
+    size_t*   pLeftSize  = (size_t*)pLeftRaw;
+    size_t*   pRightSize = (size_t*)pRightRaw;
 
-    assert(pLeft->nSize == pRight->nSize);
+    uint16_t* kLeft      = (uint16_t*)(&pLeftRaw [sizeof(size_t)]);
+    uint16_t* kRight     = (uint16_t*)(&pRightRaw[sizeof(size_t)]);
 
-    for (i = 0; (i < pLeft->nSize) && (i < pRight->nSize); ++i)
+    size_t    i;
+
+    assert(*pLeftSize == *pRightSize);
+
+    for (i = 0; i < *pLeftSize; ++i)
     {
-        if (pLeft->kKey[i] > pRight->kKey[i])
+        if (kLeft[i] > kRight[i])
         {
             return 1;
         }
-        else if (pLeft->kKey[i] < pRight->kKey[i])
+        else if (kLeft[i] < kRight[i])
         {
             return -1;
         }
@@ -457,9 +465,11 @@ int compareHashKeyType(const Hash_Key_Type* pLeft, const Hash_Key_Type* pRight)
     return 0;
 }
 
-size_t hashKey(const Hash_Key_Type* pData)
+size_t hashKey(const uint8_t* pData)
 {
-    return hashmap_hash_default(pData->kKey, pData->nSize * sizeof(uint16_t));
+    size_t* pSize  = (size_t*)pData;
+
+    return hashmap_hash_default(pData, sizeof(size_t) + (*pSize * sizeof(uint16_t)));
 }
 
 int main(int argc, char** argv)
@@ -468,6 +478,7 @@ int main(int argc, char** argv)
  
     if (pData)
     {
+        const size_t                nHashMapBufferMaxSize = 0x100000;
         char*                       kInputBuffer;
         char**                      kInputLines;
 
@@ -479,11 +490,15 @@ int main(int argc, char** argv)
         int64_t                     nButtonPressCountPartTwo = 0;
         
         Hash_Map_Type               kHashMap;
+        size_t                      nHashMapBufferSize;
+        uint8_t*                    kHashMapBuffer;
         hashmap_init(&kHashMap, hashKey, compareHashKeyType);
 
         /* Read the whole file into an easier to process 2D Buffer */
         readLines(&pData, &kInputBuffer, &kInputLines, &nMachineCount, NULL, NULL, 0);
         fclose(pData);
+
+        kHashMapBuffer = (uint8_t*)malloc(nHashMapBufferMaxSize * sizeof(uint8_t));
 
         for (i = 0; i < nMachineCount; ++i)
         {
@@ -542,7 +557,8 @@ int main(int argc, char** argv)
             j = 0;
             getButtonPermutationsAndCost(&j, kMachine.kButtonCombinations, kMachine.kButtonCombinationCosts, nMaxButonCombinations, kMachine.nJoltageCount, kMachine.kButtons, kMachine.nButtonsCount, 0, NULL, 1);
 
-            nButtonPressCountPartTwo += findFewestPressesPartTwo(kMachine.kJoltage, kMachine.kButtonCombinations, kMachine.kButtonCombinationCosts, j, kMachine.nJoltageCount, kJoltageTemp, &kHashMap);
+            nHashMapBufferSize = 0;
+            nButtonPressCountPartTwo += findFewestPressesPartTwo(kMachine.kJoltage, kMachine.kButtonCombinations, kMachine.kButtonCombinationCosts, j, kMachine.nJoltageCount, kJoltageTemp, &kHashMap, kHashMapBuffer, &nHashMapBufferSize, nHashMapBufferMaxSize);
 
             /* Cleanup */
             free(kMachine.kJoltage);
@@ -564,6 +580,7 @@ int main(int argc, char** argv)
         /* Cleanup */
         free(kInputLines);
         free(kInputBuffer);
+        free(kHashMapBuffer);
 
         hashmap_cleanup(&kHashMap);
     }
